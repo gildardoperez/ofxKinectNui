@@ -144,6 +144,7 @@ public:
 	ofPixels& getLabelPixelsCv(int playerId);
 	ofPixels* getLabelPixelsCvArray();
 	ofShortPixels& getDistancePixels();
+	NUI_DEPTH_IMAGE_PIXEL* getDepthNuiPixels();
 	std::vector<BYTE> getSoundBuffer();
 	
 	int getSkeletonPoints(ofPoint* ret[]);
@@ -175,6 +176,7 @@ public:
 	bool isFoundSkeleton();
 	bool isTrackedSkeleton(int id);
 	bool isMirror();
+	bool bSeatedMode;
 
 	bool grabsVideo();
 	bool grabsDepth();
@@ -232,6 +234,7 @@ protected:
 	ofPixels labelPixels;			///<	label pixels
 	ofPixels calibratedVideoPixels;	///<	video pixels adjusted to depth pixels
 	ofPixels labelPixelsCv[KINECT_PLAYERS_INDEX_NUM];		///<	separated label pixels for cv use, labelPixelsCv[0] contains whole players silhouette. labelPixelsCv[playerId] contains each players silhouette.
+	NUI_DEPTH_IMAGE_PIXEL* depthPixelsNui; ///<	depth + player pixels
 	std::vector<BYTE> soundBuffer;	///<	audio buffer
 	float audioBeamAngle, audioAngle, audioAngleConfidence;	///< for audio
 

@@ -30,6 +30,7 @@ ofxKinectNui::ofxKinectNui(){
 	bGrabsSkeleton = false;
 	bGrabsCalibratedVideo = false;
 	bIsFrameNew = false;
+	bSeatedMode = false;
 
 	bIsFoundSkeleton = false;
 	updateFlagDefault_ = UPDATE_FLAG_NONE;
@@ -64,6 +65,10 @@ ofxKinectNui::~ofxKinectNui(){
 	if(calibratedVideoPixels.isAllocated()){
 		calibratedVideoPixels.clear();
 	}
+	if(depthPixelsNui){
+		delete depthPixelsNui;
+	}
+
 	for(int i = 0; i < ofxKinectNui::KINECT_PLAYERS_INDEX_NUM; ++i) {
 		if(labelPixelsCv[i].isAllocated()) {
 			labelPixelsCv[i].clear();
@@ -249,6 +254,10 @@ bool ofxKinectNui::init(bool grabVideo /*= true*/,
 		if(!depthPixels.isAllocated()){
 			depthPixels.allocate(depthWidth, depthHeight, OF_PIXELS_MONO);
 		}
+		if(!depthPixelsNui){
+			depthPixelsNui = new NUI_DEPTH_IMAGE_PIXEL[depthWidth * depthHeight];
+		}
+
 		updateFlagDefault_ |= UPDATE_FLAG_DEPTH;
 		if(!distancePixels.isAllocated()){
 			distancePixels.allocate(depthWidth, depthHeight, OF_PIXELS_MONO);
@@ -309,6 +318,8 @@ bool ofxKinectNui::init(bool grabVideo /*= true*/,
 	if(!kinect.IsInited()){
 		ofLog(OF_LOG_ERROR, "ofxKinectNui: Initialization failed." + Error );
 	}
+
+	depthPixelsNui = new NUI_DEPTH_IMAGE_PIXEL[(depthWidth * depthHeight)];
 	
 	return kinect.IsInited();
 }
@@ -324,9 +335,11 @@ bool ofxKinectNui::open(){
 				init(bGrabsVideo, bGrabsDepth, bGrabsAudio, bGrabsLabel, bGrabsSkeleton, bGrabsCalibratedVideo, bGrabsLabelCv, mVideoImageType, mVideoResolution, mDepthResolution);
 			}
 		}
+
 		if(bGrabsVideo){
 			kinect.VideoStream().Open(mVideoImageType, mVideoResolution);
 		}
+
 		if(bGrabsDepth){
 			if(bGrabsLabel || bGrabsLabelCv){
 				kinect.DepthStream().Open(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, mDepthResolution, bIsNearmode);
@@ -334,8 +347,19 @@ bool ofxKinectNui::open(){
 				kinect.DepthStream().Open(NUI_IMAGE_TYPE_DEPTH, mDepthResolution, bIsNearmode);
 			}
 		}
+
 		if(bGrabsAudio){
 			kinect.AudioStream().Open();
+		}
+
+		if(bGrabsSkeleton){
+			DWORD skelFlags = 0x00000000;
+			if(bIsNearmode)
+				skelFlags |= NUI_SKELETON_TRACKING_FLAG_ENABLE_IN_NEAR_RANGE;
+			if(bSeatedMode)
+				skelFlags |= NUI_SKELETON_TRACKING_FLAG_ENABLE_SEATED_SUPPORT;
+
+			kinect.Skeleton().Enable(skelFlags);
 		}
 
 		bIsOpened = true;
@@ -454,10 +478,13 @@ void ofxKinectNui::update(UINT flag){
 				int depthIndex = offset + x;
 				depthbit = depth(bIsMirror ? x : w - 1 - x, y) >> 3;
 				playerLabel = depth(bIsMirror ? x : w - 1 - x, y) & 0x7;
+
 				if(flag & UPDATE_FLAG_LABEL){
 					memcpy(labelPixs + depthIndex * 4, &color[playerLabel], sizeof(char) * 4);
 				}
 				if(flag & UPDATE_FLAG_DISTANCE) {
+					depthPixelsNui[depthIndex].depth = (USHORT)depthbit;
+					depthPixelsNui[depthIndex].playerIndex = playerLabel;
 					memcpy(distancePixs + depthIndex, &depthbit, sizeof(short));
 				}
 				if(flag & UPDATE_FLAG_DEPTH) {
@@ -483,6 +510,7 @@ void ofxKinectNui::update(UINT flag){
 						memcpy(calibVideoPixs + depthIndex * mVideoBpp + i, &vbit, sizeof(char));
 					}
 				}
+
 				if(flag & UPDATE_FLAG_LABEL_CV){
 					for(int i = 0; i < KINECT_PLAYERS_INDEX_NUM; ++i){
 						unsigned char lb;
@@ -767,6 +795,10 @@ ofPixels* ofxKinectNui::getLabelPixelsCvArray(){
 */
 ofShortPixels& ofxKinectNui::getDistancePixels(){
 	return distancePixels;
+}
+
+NUI_DEPTH_IMAGE_PIXEL* ofxKinectNui::getDepthNuiPixels(){
+	return depthPixelsNui;
 }
 
 //---------------------------------------------------------------------------
