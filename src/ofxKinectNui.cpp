@@ -65,7 +65,7 @@ ofxKinectNui::~ofxKinectNui(){
 	if(calibratedVideoPixels.isAllocated()){
 		calibratedVideoPixels.clear();
 	}
-	if(depthPixelsNui){
+	if(kinect.IsInited() && depthPixelsNui){
 		delete depthPixelsNui;
 	}
 
